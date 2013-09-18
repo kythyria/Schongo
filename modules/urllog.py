@@ -28,6 +28,11 @@ genRegEx = re.compile(r"https?://([^ ]+)")
 titleRegEx = re.compile(r"<title[^>]*>*([^<]+)</title>", re.IGNORECASE)
 titleMimes = [ "text/html", "application/xhtml+xml" ]
 
+# dictionary of mimetype to list of file extensions. If the URL ends in a member of the latter and
+# resolves to something of the former it doesn't get shown.
+suppressedMimes = { "image/png":[".png"], "image/jpeg":[".jpg",".jpeg"], "image/gif":[".gif"], "image/svg+xml":[".svg"] }
+extensionRegex = re.compile(r"^[^?#]*(\.[^.?#]*)(?:\?.*)?(?:#.*)?$")
+
 def addStatusToArchive(ctx, s, prefix):
 	global archive
 	chan = ctx.chan
@@ -105,6 +110,8 @@ def showTitle(ctx, url):
 
 	if mime not in titleMimes:
 		s += " • MIME type: %s" % mime
+		if suppressedMime(mime, url):
+			return
 
 	if mime in titleMimes:
 		stuff = stuff.decode(encoding)
@@ -142,6 +149,23 @@ def showTwitter(ctx, tweet_id):
 		ctx.reply("Invalid twitter URL", "Twitter")
 		return
 
+# ---------------------------------------
+#       Detection of boring mimetypes
+# ---------------------------------------
+
+# A boring mimetype is one where the bot would just say "[URL] i.imgur.com • MIME type: image/png" or similar
+# They're only interesting if the URL doesn't look like one of these.
+
+def suppressedMime(mimetype, url):
+	if mimetype not in suppressedMimes:
+		return false
+	
+	extnmatch = extensionRegex.match(url)
+	if extnmatch is None:
+		return false
+	extension = extnmatch.group(1)
+
+	return extension in suppressedMimes[mimetype]
 
 # ---------------------------------------
 #       Pretty Pretty
